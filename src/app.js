@@ -95,12 +95,17 @@ app.get('/api/books', async (req, res) => {
 
 // Get a single book
 app.get('/api/books/:id', async (req, res) => {
-  let book = await Book.find((book) => book._id === parseInt(req.params.id));
+  try {
+    const book = await Book.findById(req.params.id);
 
-  if (!book) {
-    return res.status(404).send('The book with the given ID was not found');
+    if (!book) {
+      return res.status(404).send('The book with the given ID was not found');
+    }
+
+    res.status(200).send(book);
+  } catch (error) {
+    res.status(500).send('Server error');
   }
-  res.status(200).send(book);
 });
 
 // Post a book
