@@ -6,8 +6,7 @@ dotenv.config();
 
 mongoose
   .connect(process.env.MONGODB_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
+    //  useUnifiedTopology: true,
   })
   .then(() => {
     console.log('Connected to MongoDB');
@@ -20,6 +19,20 @@ const app = express();
 const port = 8000;
 // Middleware to parse JSON bodies
 app.use(bodyParser.json());
+
+// Schema
+
+const bookSchema = new mongoose.Schema(
+  {
+    title: {
+      type: String,
+      required: true,
+    },
+  },
+  { timestamps: true }
+);
+
+const Book = mongoose.model('Book', bookSchema);
 
 app.get('/', (req, res) => {
   res.send('Welcome to the Bookstore API!');
@@ -71,13 +84,18 @@ let books = [
 ];
 
 // Get all books
-app.get('/api/books', (req, res) => {
-  res.status(200).json(books);
+app.get('/api/books', async (req, res) => {
+  try {
+    const books = await Book.find();
+    res.status(200).json(books);
+  } catch (err) {
+    res.status(500).send;
+  }
 });
 
 // Get a single book
-app.get('/api/books/:id', (req, res) => {
-  let book = books.find((book) => book.id === parseInt(req.params.id));
+app.get('/api/books/:id', async (req, res) => {
+  let book = await Book.find((book) => book._id === parseInt(req.params.id));
 
   if (!book) {
     return res.status(404).send('The book with the given ID was not found');
@@ -86,31 +104,30 @@ app.get('/api/books/:id', (req, res) => {
 });
 
 // Post a book
-app.post('/api/book', (req, res) => {
-  console.log(req.body);
-  const book = {
-    id: books.length + 1,
-    title: req.body.title,
-  };
+app.post('/api/book', async (req, res) => {
+  if (!req.body.title || req.body.title.length < 3) {
+    return res
+      .status(400)
+      .send('Title is required and should be a minimum of 3 characters');
+  } else {
+    const book = new Book({
+      title: req.body.title,
+    });
 
-  books.push(book);
-  res.status(201).send(book);
+    await book.save();
+    res.status(201).send(book);
+  }
 });
 
 // Update a book
-
 app.put('/api/books/:id', (req, res) => {
   let book = books.find((book) => book.id === parseInt(req.params.id));
   if (!book) {
     return res.status(404).send('The BooK with the given Id was not found');
   }
 
-  books.forEach((book) => {
-    if (book.id === parseInt(req.params.id)) {
-      book.title = req.body.title;
-      res.status(200).send(book);
-    }
-  });
+  book.title = req.body.title;
+  res.status(200).send(book);
 });
 
 // Delete a book
@@ -124,6 +141,7 @@ app.delete('/api/books/:id', (req, res) => {
     res.status(200).send(books);
   }
 });
+
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });
